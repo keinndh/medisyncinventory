@@ -100,6 +100,12 @@ def init_db():
             db.session.execute(text("ALTER TABLE users ADD COLUMN profile_picture TEXT DEFAULT ''"))
             db.session.commit()
             print('Migrated: added profile_picture to users')
+        # Dispensing: serial_number
+        disp_cols = [c['name'] for c in insp.get_columns('dispensings')]
+        if 'serial_number' not in disp_cols:
+            db.session.execute(text("ALTER TABLE dispensings ADD COLUMN serial_number VARCHAR(20) UNIQUE"))
+            db.session.commit()
+            print('Migrated: added serial_number to dispensings')
         if not User.query.filter_by(username='admin').first():
             u = User(username='admin', full_name='System Admin', role='admin')
             u.set_password('admin123')
