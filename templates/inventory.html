@@ -1,0 +1,529 @@
+{% extends "base.html" %}
+{% block title %}Inventory{% endblock %}
+{% block content %}
+<style>
+    /* Styling for original batch in batches modal */
+    .original-batch-row {
+        background-color: rgba(34, 197, 94, 0.08) !important;
+        border-left: 4px solid #22c55e !important;
+    }
+    .original-batch-row td {
+        font-weight: 600;
+    }
+    .original-stock-badge {
+        background-color: #22c55e;
+        color: white;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.72rem;
+        font-weight: bold;
+        display: inline-block;
+        margin-right: 8px;
+        vertical-align: middle;
+        text-transform: uppercase;
+    }
+    
+    /* Batch actions three-dots dropdown styles */
+    .batch-action-dropdown {
+        position: relative;
+        display: inline-block;
+    }
+    .batch-dropdown-menu {
+        display: none;
+        position: absolute;
+        right: 0;
+        top: 100%;
+        background: var(--card-bg, #ffffff);
+        border: 1px solid var(--border-color, #e2e8f0);
+        border-radius: 8px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        z-index: 9999;
+        min-width: 130px;
+        padding: 6px 0;
+    }
+    .batch-dropdown-menu button {
+        display: block;
+        width: 100%;
+        text-align: left;
+        padding: 8px 16px;
+        background: none;
+        border: none;
+        font-size: 0.85rem;
+        color: var(--text-color, #1e293b);
+        cursor: pointer;
+        transition: background 0.15s ease, color 0.15s ease;
+    }
+    .batch-dropdown-menu button:hover {
+        background: var(--border-color, #f1f5f9);
+    }
+    
+    /* Highlight table row on hover to invite clicking */
+    .data-table tbody tr:hover {
+        background-color: rgba(0, 0, 0, 0.02);
+    }
+</style>
+<div class="page-title-row">
+    <div>
+        <h1 class="page-title">Inventory</h1>
+        <p class="page-subtitle">Manage medicine stock, add new items, and track inventory</p>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+        <div class="export-btn-wrap">
+            <button class="btn btn-outline btn-sm" id="exportBtn">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Export
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="export-dropdown" id="exportDropdown">
+                <button id="exportCsvBtn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+                    Export CSV
+                </button>
+                <button id="exportPdfBtn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    Export PDF
+                </button>
+
+            </div>
+        </div>
+        <button class="btn btn-success" id="restockMedBtn">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            Restock
+        </button>
+        <button class="btn btn-primary" id="addMedBtn">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Medicine
+        </button>
+    </div>
+</div>
+
+<!-- Search & Filter Toolbar -->
+<div class="toolbar" style="margin-bottom: 24px; align-items: stretch; gap: 12px;">
+    <!-- Universal search -->
+    <div class="search-box" style="flex:1.5;min-width:250px;">
+        <input type="text" id="invUniversalSearch" placeholder="Search names, stock #, remarks, categories...">
+        <div class="search-icon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+    </div>
+    
+    <!-- Filter Type Dropdown -->
+    <div style="width: 180px;">
+        <select id="invFilterType" class="form-control">
+            <option value="">-- Filter By --</option>
+            <option value="status">Status</option>
+            <option value="category">Generic Name</option>
+            <option value="category_type">Category</option>
+            <option value="date_added">Date Added</option>
+            <option value="restocked_date">Restocked Date</option>
+            <option value="sort">Sort Order</option>
+        </select>
+    </div>
+
+    <!-- Dynamic Filter Inputs -->
+    <div id="invSearchWrapper" class="search-box" style="flex: 1; display: none;">
+        <input type="text" id="invSearchInput" placeholder="Filter value...">
+        <div class="search-icon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+    </div>
+
+    <div id="invCategoryWrapper" style="display:none;flex:1;" class="autocomplete-wrapper">
+        <input type="text" id="invCategoryInput" class="form-control" placeholder="Type Generic Name..." autocomplete="off">
+        <div class="autocomplete-dropdown" id="invCategoryDropdown"></div>
+    </div>
+
+    <div id="invStatusWrapper" style="display: none; flex: 1;">
+        <select id="invStatusSelect" class="form-control">
+            <option value="">All Status</option>
+            <option value="Active">Active</option>
+            <option value="Near Expiry">Near Expiry</option>
+            <option value="Expired">Expired</option>
+            <option value="Discarded">Discarded</option>
+        </select>
+    </div>
+
+    <div id="invCategoryTypeWrapper" style="display:none;flex:1;" class="autocomplete-wrapper">
+        <input type="text" id="invCategoryTypeInput" class="form-control" placeholder="Type category..." autocomplete="off">
+        <div class="autocomplete-dropdown" id="invCategoryTypeDropdown"></div>
+    </div>
+
+    <div id="invDateWrapper" style="display: none; flex: 0.8;">
+        <input type="date" id="invDateFilter" class="form-control">
+    </div>
+
+    <div id="invSortWrapper" style="display: none; flex: 0.8;">
+        <select id="invSortBy" class="form-control">
+            <option value="date_added">Latest</option>
+            <option value="quantity">Quantity</option>
+            <option value="alphabetical">A-Z</option>
+            <option value="stock_number">Stock #</option>
+        </select>
+    </div>
+</div>
+
+<!-- Display Blocks (mini carousel) -->
+<div style="display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap;">
+    <div class="card" style="flex:1;min-width:140px;cursor:pointer;padding:16px 20px;" data-block="total" id="invBlockTotal">
+        <div style="font-size:0.75rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.3px;">Total Items</div>
+        <div style="font-size:1.75rem;font-weight:900;color:var(--primary);margin-top:4px;" id="invStatTotal">0</div>
+    </div>
+    <div class="card" style="flex:1;min-width:140px;cursor:pointer;padding:16px 20px;" data-block="about_to_expire" id="invBlockExpiring">
+        <div style="font-size:0.75rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.3px;">About to Expire</div>
+        <div style="font-size:1.75rem;font-weight:900;color:var(--yellow);margin-top:4px;" id="invStatExpiring">0</div>
+    </div>
+    <div class="card" style="flex:1;min-width:140px;cursor:pointer;padding:16px 20px;" data-block="expired" id="invBlockExpired">
+        <div style="font-size:0.75rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.3px;">Expired</div>
+        <div style="font-size:1.75rem;font-weight:900;color:var(--coral);margin-top:4px;" id="invStatExpired">0</div>
+    </div>
+    <div class="card" style="flex:1;min-width:140px;cursor:pointer;padding:16px 20px;" data-block="dispensed" id="invBlockDispensed">
+        <div style="font-size:0.75rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.3px;">Dispensed</div>
+        <div style="font-size:1.75rem;font-weight:900;color:var(--info);margin-top:4px;" id="invStatDispensed">0</div>
+    </div>
+    <div class="card" style="flex:1;min-width:140px;cursor:pointer;padding:16px 20px;" data-block="discarded" id="invBlockDiscarded">
+        <div style="font-size:0.75rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.3px;">Discarded</div>
+        <div style="font-size:1.75rem;font-weight:900;color:var(--navy);margin-top:4px;" id="invStatDiscarded">0</div>
+    </div>
+</div>
+
+<!-- Main Inventory Table -->
+<div class="card">
+    <div class="card-body" style="padding:0;">
+        <div class="table-wrapper">
+            <table class="data-table" id="inventoryTable">
+                <thead>
+                    <tr>
+                        <th>Stock #</th>
+                        <th>Brand Name</th>
+                        <th>Dosage</th>
+                        <th>Unit</th>
+                        <th>Qty</th>
+                        <th>Generic Name</th>
+                        <th>Expiration Date</th>
+                        <th>Days To Expire</th>
+                        <th>Remarks</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="inventoryBody">
+                    <tr class="empty-row"><td colspan="12">Loading inventory...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div id="inventoryPagination" style="padding: 0 16px 16px;"></div>
+    </div>
+</div>
+
+<!-- Add/Edit Medicine Modal -->
+<div class="modal-overlay" id="medModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="medModalTitle">Add Medicine</h3>
+            <button class="modal-close" onclick="closeModal('medModal')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <div class="modal-body">
+            <form id="medForm">
+                <input type="hidden" id="medEditId">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="medStock">Stock Number</label>
+                        <input type="text" id="medStock" class="form-control" placeholder="e.g. STK-001" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="medName">Article / Medicine Name</label>
+                        <input type="text" id="medName" class="form-control" placeholder="e.g. Amoxicillin" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="medDosage">Description / Dosage</label>
+                        <input type="text" id="medDosage" class="form-control" placeholder="e.g. 500mg">
+                    </div>
+                    <div class="form-group">
+                        <label for="medUnit">Unit of Measurement</label>
+                        <select id="medUnit" class="form-control" required>
+                            <option value="">Select unit...</option>
+                            <option>Tablet</option>
+                            <option>Capsule</option>
+                            <option>Syrup</option>
+                            <option>Sachet</option>
+                            <option>Vial</option>
+                            <option>Ampule</option>
+                            <option>Drops</option>
+                            <option>Cream</option>
+                            <option>Ointment</option>
+                            <option>Suppository</option>
+                            <option>Bottle</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="medQty">Quantity</label>
+                        <input type="number" id="medQty" class="form-control" placeholder="0" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="medCategoryType">Category</label>
+                        <input type="text" id="medCategoryType" class="form-control" placeholder="e.g. Pain Relief, Heart, First Aid" autocomplete="off">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group autocomplete-wrapper">
+                        <label for="medCategory">Generic Name</label>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <input type="text" id="medCategory" class="form-control" placeholder="e.g. Antibiotic, Vitamin" autocomplete="off" style="flex:1;">
+                            <button type="button" class="btn btn-primary" id="addCategoryBtn" style="padding:0 12px; height: 38px;" title="Add Generic Name">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            </button>
+                        </div>
+                        <div class="autocomplete-dropdown" id="medCategoryDropdown" style="top:100%;"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="medExpDate">Expiration Date</label>
+                        <input type="date" id="medExpDate" class="form-control">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="medRemarks">Remarks</label>
+                    <textarea id="medRemarks" class="form-control" rows="2" placeholder="Optional remarks..."></textarea>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeModal('medModal')">Cancel</button>
+            <button class="btn btn-primary" id="medSubmitBtn">Add Medicine</button>
+        </div>
+    </div>
+</div>
+
+<!-- Restock Medicine Modal -->
+<div class="modal-overlay" id="restockModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Restock Medicine</h3>
+            <button class="modal-close" onclick="closeModal('restockModal')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <div class="modal-body">
+            <form id="restockForm">
+                <div class="form-group">
+                    <label for="restockMedSelect">Select Medicine</label>
+                    <select id="restockMedSelect" class="form-control" required>
+                        <option value="">Choose medicine to restock...</option>
+                    </select>
+                </div>
+                <!-- Disabled preview info -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="restockStock">Current Stock #</label>
+                        <input type="text" id="restockStock" class="form-control" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label for="restockCategory">Category</label>
+                        <input type="text" id="restockCategory" class="form-control" disabled>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="restockDosage">Description / Dosage</label>
+                        <input type="text" id="restockDosage" class="form-control" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label for="restockUnit">Unit of Measurement</label>
+                        <input type="text" id="restockUnit" class="form-control" disabled>
+                    </div>
+                </div>
+                <hr style="margin: 16px 0; border: none; border-top: 1px solid var(--border-color);">
+                <!-- Enabled entry fields -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="restockQty">New Quantity</label>
+                        <input type="number" id="restockQty" class="form-control" placeholder="0" min="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="restockExpDate">Expiration Date</label>
+                        <input type="date" id="restockExpDate" class="form-control">
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeModal('restockModal')">Cancel</button>
+            <button class="btn btn-primary" id="restockSubmitBtn">Restock Medicine</button>
+        </div>
+    </div>
+</div>
+
+<!-- Discard Modal -->
+<div class="modal-overlay" id="discardModal">
+    <div class="modal modal-sm">
+        <div class="modal-header">
+            <h3>Discard Medicine</h3>
+            <button class="modal-close" onclick="closeModal('discardModal')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <div class="modal-body confirm-dialog">
+            <div class="confirm-icon">
+                <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
+            <div class="confirm-text">Discard this medicine?</div>
+            <div class="confirm-sub">This action will mark the medicine as discarded. Please provide a reason.</div>
+            <input type="hidden" id="discardMedId">
+            <div class="form-group">
+                <label for="discardReason">Reason</label>
+                <textarea id="discardReason" class="form-control" rows="3" placeholder="Enter reason for discarding..." required></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeModal('discardModal')">Cancel</button>
+            <button class="btn btn-coral" id="discardConfirmBtn">Discard</button>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Modal -->
+<div class="modal-overlay" id="deleteModal">
+    <div class="modal modal-sm">
+        <div class="modal-header">
+            <h3>Delete Medicine</h3>
+            <button class="modal-close" onclick="closeModal('deleteModal')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <div class="modal-body confirm-dialog">
+            <div class="confirm-icon">
+                <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+            </div>
+            <div class="confirm-text">Delete this medicine?</div>
+            <div class="confirm-sub">This action cannot be undone. Please provide a reason.</div>
+            <input type="hidden" id="deleteMedId">
+            <div class="form-group">
+                <label for="deleteReason">Reason</label>
+                <textarea id="deleteReason" class="form-control" rows="3" placeholder="Enter reason for deletion..." required></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeModal('deleteModal')">Cancel</button>
+            <button class="btn btn-danger" id="deleteConfirmBtn">Delete</button>
+        </div>
+    </div>
+</div>
+
+<!-- Block Detail Popup (reused from dashboard) -->
+<div class="modal-overlay" id="invBlockModal">
+    <div class="modal modal-lg">
+        <div class="modal-header">
+            <h3 id="invBlockModalTitle">Items</h3>
+            <button class="modal-close" onclick="closeModal('invBlockModal')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <div class="modal-body" style="padding:0;">
+            <div class="table-wrapper">
+                <table class="data-table">
+                    <thead id="invBlockTableHead">
+                        <tr>
+                            <th>Stock #</th>
+                            <th>Article</th>
+                            <th>Unit</th>
+                            <th>Qty</th>
+                            <th>Exp. Date</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="invBlockTableBody"></tbody>
+                </table>
+            </div>
+            <div id="invBlockPagination" style="padding: 0 16px 16px;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Duplicate Medicine Check Modal -->
+<div class="modal-overlay" id="duplicateMedModal">
+    <div class="modal modal-sm">
+        <div class="modal-header">
+            <h3>Duplicate Found</h3>
+            <button class="modal-close" onclick="closeModal('duplicateMedModal')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <div class="modal-body confirm-dialog">
+            <div class="confirm-icon" style="background:rgba(255, 167, 38, 0.1);color:var(--orange);">
+                <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
+            <div class="confirm-text">This item already existed in the inventory.</div>
+            <div class="confirm-sub">Do you want to Add as a new batch or Restock the existing one?</div>
+        </div>
+        <div class="modal-footer" style="justify-content:center;gap:12px;">
+            <button class="btn btn-outline" onclick="closeModal('duplicateMedModal')">Cancel</button>
+            <button class="btn btn-success" id="dupRestockBtn">Restocked</button>
+            <button class="btn btn-primary" id="dupAddBtn">Add</button>
+        </div>
+    </div>
+</div>
+
+<!-- Duplicate Generic Name Check Modal -->
+<div class="modal-overlay" id="duplicateCategoryModal">
+    <div class="modal modal-sm">
+        <div class="modal-header">
+            <h3>Similar Name Found</h3>
+            <button class="modal-close" onclick="closeModal('duplicateCategoryModal')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <div class="modal-body confirm-dialog">
+            <div class="confirm-icon" style="background:rgba(255, 167, 38, 0.1);color:var(--orange);">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
+            <div class="confirm-text">A similar generic name already exists.</div>
+            <div class="confirm-sub">Are you sure you want to add this new name to the database?</div>
+        </div>
+        <div class="modal-footer" style="justify-content:center;gap:12px;">
+            <button class="btn btn-outline" onclick="closeModal('duplicateCategoryModal')">Cancel</button>
+            <button class="btn btn-primary" id="dupCategoryAddBtn">Add</button>
+        </div>
+    </div>
+</div>
+
+<!-- Medicine Batches Detail Modal -->
+<div class="modal-overlay" id="medBatchesModal">
+    <div class="modal modal-lg">
+        <div class="modal-header">
+            <h3>Medicine Batches Details</h3>
+            <button class="modal-close" onclick="closeModal('medBatchesModal')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <div class="modal-body" style="padding: 20px;">
+            <!-- Over the table info: brand name, dosage, unit, generic name -->
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; padding: 12px; background: var(--bg-color); border-radius: 8px; border: 1px solid var(--border-color);">
+                <div>
+                    <strong style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Brand Name</strong>
+                    <span id="batchInfoBrand" style="font-weight: 600; font-size: 0.95rem; color: var(--text-color);">-</span>
+                </div>
+                <div>
+                    <strong style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Dosage</strong>
+                    <span id="batchInfoDosage" style="font-weight: 600; font-size: 0.95rem; color: var(--text-color);">-</span>
+                </div>
+                <div>
+                    <strong style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Unit</strong>
+                    <span id="batchInfoUnit" style="font-weight: 600; font-size: 0.95rem; color: var(--text-color);">-</span>
+                </div>
+                <div>
+                    <strong style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Generic Name</strong>
+                    <span id="batchInfoGeneric" style="font-weight: 600; font-size: 0.95rem; color: var(--text-color);">-</span>
+                </div>
+            </div>
+
+            <div class="table-wrapper" style="overflow: visible;">
+                <table class="data-table" style="overflow: visible;">
+                    <thead>
+                        <tr>
+                            <th>Stock #</th>
+                            <th>Qty</th>
+                            <th>Date Added</th>
+                            <th>Exp. Date</th>
+                            <th>Days to Expire</th>
+                            <th>Status</th>
+                            <th>Remarks</th>
+                            <th style="width: 80px;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="medBatchesTableBody">
+                        <!-- Loaded dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/inventory.js') }}"></script>
+{% endblock %}

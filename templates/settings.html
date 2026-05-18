@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block content %}
+<div class="page-title-row">
+    <div>
+        <h1 class="page-title">Settings</h1>
+        <p class="page-subtitle">Manage your profile and account preferences</p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header"><h3>Profile</h3></div>
+    <div class="card-body">
+        <div class="profile-section">
+            <div class="profile-pic-upload">
+                <div class="profile-pic-large" id="settingsProfilePic">
+                    <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </div>
+                <label class="btn btn-outline btn-sm" style="cursor:pointer;">
+                    Upload Photo
+                    <input type="file" id="profilePicInput" accept="image/*" style="display:none;">
+                </label>
+            </div>
+            <div class="profile-form">
+                <form id="profileForm">
+                    <div class="form-group">
+                        <label for="settingsName">Full Name</label>
+                        <input type="text" id="settingsName" class="form-control" placeholder="Your full name">
+                    </div>
+                    <div class="form-group">
+                        <label for="settingsUsername">Username</label>
+                        <input type="text" id="settingsUsername" class="form-control" placeholder="Your username">
+                    </div>
+                    <div class="form-group">
+                        <label for="settingsPassword">New Password</label>
+                        <input type="password" id="settingsPassword" class="form-control" placeholder="Leave blank to keep current">
+                    </div>
+                    <div class="form-group">
+                        <label for="settingsPasswordConfirm">Confirm New Password</label>
+                        <input type="password" id="settingsPasswordConfirm" class="form-control" placeholder="Confirm new password">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+{% endblock %}

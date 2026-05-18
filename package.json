@@ -1,0 +1,13 @@
+{
+  "name": "medisync",
+  "version": "1.0.0",
+  "description": "Medicine Inventory Management System for Health Centers",
+  "private": true,
+  "scripts": {
+    "postinstall": "echo 'Dependencies installed successfully'"
+  },
+  "dependencies": {
+    "@vercel/analytics": "^2.0.1",
+    "@vercel/speed-insights": "^1.3.1"
+  }
+}

@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% block title %}Centers{% endblock %}
+{% block content %}
+<div class="page-title-row">
+    <div>
+        <h1 class="page-title">Centers</h1>
+        <p class="page-subtitle">Manage health centers and view their transaction history</p>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+        <div id="centerManageBarTop" style="display:none;gap:8px;align-items:center;" class="center-manage-bar">
+            <button class="btn btn-outline btn-sm" id="selectAllCentersBtn">Select All</button>
+            <button class="btn btn-coral btn-sm" id="deleteSelectedCentersBtn">Delete Selected</button>
+            <button class="btn btn-ghost btn-sm" id="cancelCenterSelectBtn">Cancel</button>
+        </div>
+        <div class="export-btn-wrap" id="centerOptionsWrap">
+            <button class="btn btn-ghost" id="centerOptionsBtn" style="padding: 8px; border-radius: 50%; width: 40px; height: 40px;" title="Manage Centers">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+            </button>
+            <div class="export-dropdown" id="centerOptionsDropdown">
+                <button id="enterDeleteModeBtn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    Delete Center(s)
+                </button>
+            </div>
+        </div>
+        <button class="btn btn-primary" id="addCenterBtn">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Center
+        </button>
+    </div>
+</div>
+
+<!-- Add Center Modal -->
+<div class="modal-overlay" id="addCenterModal">
+    <div class="modal modal-sm">
+        <div class="modal-header">
+            <h3>Add Center</h3>
+            <button class="modal-close" onclick="closeModal('addCenterModal')">
+                <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <form id="centerForm">
+                <div class="form-group" style="margin-bottom:0;">
+                    <label for="centerName">Center Name</label>
+                    <input type="text" id="centerName" class="form-control" placeholder="Enter center name" required>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeModal('addCenterModal')">Cancel</button>
+            <button type="submit" form="centerForm" class="btn btn-primary" id="addCenterSubmit">Add Center</button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Center Modal -->
+<div class="modal-overlay" id="editCenterModal">
+    <div class="modal modal-sm">
+        <div class="modal-header">
+            <h3>Edit Center</h3>
+            <button class="modal-close" onclick="closeModal('editCenterModal')">
+                <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <form id="editCenterForm">
+                <input type="hidden" id="editCenterId">
+                <div class="form-group" style="margin-bottom:0;">
+                    <label for="editCenterNameInput">Center Name</label>
+                    <input type="text" id="editCenterNameInput" class="form-control" required>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeModal('editCenterModal')">Cancel</button>
+            <button type="submit" form="editCenterForm" class="btn btn-primary">Save Changes</button>
+        </div>
+    </div>
+</div>
+
+<!-- Add Recipient Modal -->
+<div class="modal-overlay" id="addRecipientModal" style="z-index: 1100;">
+    <div class="modal modal-sm">
+        <div class="modal-header">
+            <h3>Add Recipient</h3>
+            <button class="modal-close" onclick="closeModal('addRecipientModal')">
+                <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <form id="addRecipientForm">
+                <div class="form-group">
+                    <label for="newRecipientName">Recipient Name</label>
+                    <input type="text" id="newRecipientName" class="form-control" placeholder="Full Name" required>
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label for="newRecipientContact">Contact Number (Optional)</label>
+                    <input type="text" id="newRecipientContact" class="form-control" placeholder="e.g. 09123456789">
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeModal('addRecipientModal')">Cancel</button>
+            <button type="submit" form="addRecipientForm" class="btn btn-primary">Add Recipient</button>
+        </div>
+    </div>
+</div>
+
+<!-- Centers List -->
+<div id="centersList">
+    <div class="empty-state">
+        <svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></svg>
+        <div class="empty-title">No centers added</div>
+        <div class="empty-sub">Add a center to get started</div>
+    </div>
+</div>
+
+<!-- Recipients Modal -->
+<div class="modal-overlay" id="recipientsModal">
+    <div class="modal modal-lg">
+        <div class="modal-header">
+            <h3 id="recipientsModalTitle">Recipients</h3>
+            <button class="modal-close" onclick="closeModal('recipientsModal')">
+                <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+        <div class="modal-body" style="padding:0;">
+            <div style="padding:12px 16px;display:flex;justify-content:flex-end;gap:8px;border-bottom:1px solid var(--border);">
+                <button class="btn btn-outline btn-sm" id="selectAllRecipientsBtn" style="display:none;">Select All</button>
+                <button class="btn btn-coral btn-sm" id="deleteSelectedRecipientsBtn" style="display:none;">Delete Selected</button>
+                <button class="btn btn-ghost btn-sm" id="cancelRecipientSelectBtn" style="display:none;">Cancel</button>
+                <div class="export-btn-wrap" id="recipientOptionsWrap">
+                    <button class="btn btn-outline btn-sm" id="recipientOptionsBtn" title="Manage Recipients">
+                        Manage
+                    </button>
+                    <div class="export-dropdown" id="recipientOptionsDropdown">
+                        <button id="showAddRecipientBtn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            Add Recipient
+                        </button>
+                        <button id="enterRecipientDeleteModeBtn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                            Delete Recipient(s)
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div id="recipientsCardGrid" class="recipient-grid" style="padding: 16px;">
+                <!-- Recipient cards will be loaded here -->
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeModal('recipientsModal')">Close</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/centers.js') }}"></script>
+{% endblock %}

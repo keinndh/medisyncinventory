@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% block title %}Account{% endblock %}
+{% block content %}
+<div class="page-title-row">
+    <div>
+        <h1 class="page-title">Account</h1>
+        <p class="page-subtitle">Manage your profile and team accounts</p>
+    </div>
+</div>
+
+<!-- Profile Card -->
+<div class="card" style="margin-bottom: 24px;">
+    <div class="card-header"><h3>Profile</h3></div>
+    <div class="card-body">
+        <div class="profile-section">
+            <div class="profile-pic-upload">
+                <div class="profile-pic-large" id="settingsProfilePic">
+                    <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </div>
+                <label class="btn btn-outline btn-sm" style="cursor:pointer;">
+                    Upload Photo
+                    <input type="file" id="profilePicInput" accept="image/*" style="display:none;">
+                </label>
+            </div>
+            <div class="profile-form">
+                <form id="profileForm">
+                    <div class="form-group">
+                        <label for="settingsName">Full Name</label>
+                        <input type="text" id="settingsName" class="form-control" placeholder="Your full name">
+                    </div>
+                    <div class="form-group">
+                        <label for="settingsUsername">Username</label>
+                        <input type="text" id="settingsUsername" class="form-control" placeholder="Your username">
+                    </div>
+                    <div class="form-group">
+                        <label for="settingsPassword">New Password</label>
+                        <input type="password" id="settingsPassword" class="form-control" placeholder="Leave blank to keep current">
+                    </div>
+                    <div class="form-group">
+                        <label for="settingsPasswordConfirm">Confirm New Password</label>
+                        <input type="password" id="settingsPasswordConfirm" class="form-control" placeholder="Confirm new password">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sub-Accounts Card (Admin Only) -->
+<div class="card" id="subAccountsCard" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <h3>Team Accounts</h3>
+        <div style="display:flex;align-items:center;gap:12px;">
+            <span class="sub-count-badge" id="subCountBadge">0 / 5</span>
+            <button class="btn btn-primary btn-sm" id="addSubBtn">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Add Account
+            </button>
+        </div>
+    </div>
+    <div class="card-body" style="padding:0;">
+        <div class="table-wrapper">
+            <table class="data-table" id="subAccountsTable">
+                <thead>
+                    <tr>
+                        <th>Full Name</th>
+                        <th>Username</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="subAccountsBody">
+                    <tr class="empty-row"><td colspan="4">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Add Sub-Account Modal -->
+<div class="modal-overlay" id="addSubModal">
+    <div class="modal modal-sm">
+        <div class="modal-header">
+            <h3>Add Team Account</h3>
+            <button class="modal-close" onclick="closeModal('addSubModal')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <div class="modal-body">
+            <form id="addSubForm">
+                <div class="form-group">
+                    <label for="subFullName">Full Name</label>
+                    <input type="text" id="subFullName" class="form-control" placeholder="Coworker's full name" required>
+                </div>
+                <div class="form-group">
+                    <label for="subUsername">Username</label>
+                    <input type="text" id="subUsername" class="form-control" placeholder="Login username" required>
+                </div>
+                <div class="form-group">
+                    <label for="subPassword">Password</label>
+                    <input type="password" id="subPassword" class="form-control" placeholder="Min. 6 characters" required>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeModal('addSubModal')">Cancel</button>
+            <button class="btn btn-primary" id="submitSubBtn">Create Account</button>
+        </div>
+    </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div class="modal-overlay" id="resetPwModal">
+    <div class="modal modal-sm">
+        <div class="modal-header">
+            <h3>Reset Password</h3>
+            <button class="modal-close" onclick="closeModal('resetPwModal')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="resetPwSubId">
+            <div class="form-group">
+                <label for="resetPwValue">New Password</label>
+                <input type="password" id="resetPwValue" class="form-control" placeholder="Min. 6 characters" required>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeModal('resetPwModal')">Cancel</button>
+            <button class="btn btn-primary" id="submitResetPwBtn">Reset Password</button>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Sub-Account Modal -->
+<div class="modal-overlay" id="deleteSubModal">
+    <div class="modal modal-sm">
+        <div class="modal-body confirm-dialog">
+            <div class="confirm-icon">
+                <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </div>
+            <div class="confirm-text">Delete this account?</div>
+            <div class="confirm-sub">This will permanently remove the sub-account and revoke access.</div>
+            <input type="hidden" id="deleteSubId">
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeModal('deleteSubModal')">Cancel</button>
+            <button class="btn btn-danger" id="confirmDeleteSubBtn">Delete</button>
+        </div>
+    </div>
+</div>
+
+<!-- Sub-Account Activity Modal -->
+<div class="modal-overlay" id="subActivityModal">
+    <div class="modal modal-lg">
+        <div class="modal-header">
+            <h3 id="subActivityTitle">Activity Log</h3>
+            <button class="modal-close" onclick="closeModal('subActivityModal')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <div class="modal-body" style="padding:0;max-height:500px;overflow-y:auto;">
+            <div class="table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Action</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody id="subActivityBody">
+                        <tr class="empty-row"><td colspan="3">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/account.js') }}"></script>
+{% endblock %}

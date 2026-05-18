@@ -1,0 +1,291 @@
+{% extends "base.html" %}
+{% block title %}Dispensing{% endblock %}
+{% block content %}
+<div class="page-title-row">
+    <div>
+        <h1 class="page-title">Dispensing</h1>
+        <p class="page-subtitle">Dispense medicines, manage queue, and view distribution records</p>
+    </div>
+    <div style="display:flex;gap:8px;">
+        <button class="btn btn-outline" id="historyBtn">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            History
+        </button>
+    </div>
+</div>
+
+<div class="grid-2">
+    <!-- Dispense Form -->
+    <div class="card">
+        <div class="card-header"><h3>Dispense Medicine</h3></div>
+        <div class="card-body">
+            <form id="dispenseForm">
+                <div class="form-group">
+                    <label for="dispDispenser">Name of Dispenser</label>
+                    <input type="text" id="dispDispenser" class="form-control" placeholder="Enter dispenser name" required>
+                </div>
+                <div class="form-group">
+                    <label for="dispMedicine">Select Medicine</label>
+                    <div class="autocomplete-wrapper">
+                        <input type="text" id="dispMedicine" class="form-control" placeholder="Type or search medicine name..." required autocomplete="off">
+                        <div class="autocomplete-dropdown" id="medDropdown"></div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Available Stock: <strong id="dispStock">-</strong></label>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="dispRecipient">Recipient Name</label>
+                        <div class="autocomplete-wrapper">
+                            <input type="text" id="dispRecipient" class="form-control" placeholder="Recipient full name" required autocomplete="off">
+                            <div class="autocomplete-dropdown" id="recipientDropdown"></div>
+                        </div>
+                        <button type="button" class="btn btn-ghost btn-sm" id="saveRecipientBtn" style="margin-top:4px;display:none;">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                            Save Recipient Profile
+                        </button>
+                    </div>
+                    <div class="form-group">
+                        <label for="dispContact">Contact Number</label>
+                        <input type="text" id="dispContact" class="form-control" placeholder="09XX-XXX-XXXX" maxlength="11">
+                        <div id="contactError" style="color:var(--coral);font-size:0.78rem;margin-top:3px;display:none;">Invalid number. Must start with 09 and be 11 digits.</div>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="dispCenter">Center</label>
+                        <select id="dispCenter" class="form-control">
+                            <option value="">Select center...</option>
+                        </select>
+                        <button type="button" class="btn btn-ghost btn-sm" style="margin-top:4px;" id="addCenterFromDispense">+ Add New Center</button>
+                    </div>
+                    <div class="form-group">
+                        <label for="dispQty">Quantity to Dispense</label>
+                        <input type="number" id="dispQty" class="form-control" min="1" placeholder="0" style="cursor: pointer; background: var(--bg-color);">
+                        <button type="button" class="btn btn-outline btn-sm" id="btnOpenBatchSelect" style="margin-top: 6px; width: 100%;">Click to Allocate from Batches</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="dispRemarks">Remarks</label>
+                    <textarea id="dispRemarks" class="form-control" rows="2" placeholder="Optional remarks..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Dispense</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Request Queue -->
+    <div class="card">
+        <div class="card-header">
+            <h3>Request Queue</h3>
+            <span class="badge badge-pending" id="queueCount">0 pending</span>
+        </div>
+        <div class="card-body" id="queueList">
+            <div class="empty-state">
+                <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                <div class="empty-title">No pending requests</div>
+                <div class="empty-sub">Queue is empty</div>
+            </div>
+        </div>
+        <div id="queuePagination" style="padding: 0 16px 16px;"></div>
+    </div>
+</div>
+
+<!-- Today's Distribution -->
+<div class="card" style="margin-top:24px;">
+    <div class="card-header">
+        <h3>Today's Distribution</h3>
+    </div>
+    <div class="card-body" style="padding:0;">
+        <div class="table-wrapper">
+            <table class="data-table" id="todayTable">
+                <thead>
+                    <tr>
+                        <th>Dispenser</th>
+                        <th>Date/Time</th>
+                        <th>Brand Name</th>
+                        <th>Quantity</th>
+                        <th>Recipient</th>
+                        <th>Contact</th>
+                        <th>Center</th>
+                        <th>Remarks</th>
+                        <th>Receipt</th>
+                    </tr>
+                </thead>
+                <tbody id="todayBody">
+                    <tr class="empty-row"><td colspan="9">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div id="todayPagination" style="padding: 0 16px 16px;"></div>
+    </div>
+</div>
+
+<!-- History Modal -->
+<div class="modal-overlay" id="historyModal">
+    <div class="modal modal-lg">
+        <div class="modal-header">
+            <h3>Dispensing History</h3>
+            <button class="modal-close" onclick="closeModal('historyModal')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <div class="modal-body">
+            <div class="toolbar" style="margin-bottom:16px;">
+                <div class="search-box" style="flex:1;">
+                    <input type="text" id="historySearch" placeholder="Search by recipient, medicine, or center...">
+                    <div class="search-icon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+                </div>
+                <input type="date" id="historyDate" class="form-control" style="width:auto;">
+            </div>
+            <div class="table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Dispenser</th>
+                            <th>Date/Time</th>
+                            <th>Medicine</th>
+                            <th>Qty</th>
+                            <th>Recipient</th>
+                            <th>Contact</th>
+                            <th>Center</th>
+                            <th>Receipt</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyBody"></tbody>
+                </table>
+            </div>
+            <div id="historyPagination" style="padding: 0 16px 16px;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Center Quick Modal -->
+<div class="modal-overlay" id="quickCenterModal">
+    <div class="modal modal-sm">
+        <div class="modal-header">
+            <h3>Add Center</h3>
+            <button class="modal-close" onclick="closeModal('quickCenterModal')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="quickCenterName">Center Name</label>
+                <input type="text" id="quickCenterName" class="form-control" placeholder="Enter center name" required>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeModal('quickCenterModal')">Cancel</button>
+            <button class="btn btn-primary" id="quickCenterSubmit">Add Center</button>
+        </div>
+    </div>
+</div>
+
+<!-- Dispense Confirm Modal -->
+<div class="modal-overlay" id="confirmDispenseModal">
+    <div class="modal flex-modal">
+        <div class="modal-header">
+            <h3>Insufficient Stock</h3>
+            <button class="modal-close" onclick="closeModal('confirmDispenseModal')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <div class="modal-body">
+            <p id="confirmDispenseMessage" style="margin-bottom: 16px;"></p>
+        </div>
+        <div class="modal-footer" style="flex-direction: column; align-items: stretch; gap: 8px;">
+            <button class="btn btn-primary" id="btnDispenseAll">Dispense All Available</button>
+            <button class="btn btn-primary" id="btnDispenseAndQueue">Dispense Half &amp; Queue Remaining</button>
+            <button class="btn btn-primary" id="btnDispenseAndCancel">Dispense Half &amp; Cancel Remaining</button>
+            <button class="btn btn-primary" id="btnQueueAll">Queue All</button>
+            <button class="btn btn-coral" onclick="closeModal('confirmDispenseModal')">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- Queue Detail Modal -->
+<div class="modal-overlay" id="queueDetailModal">
+    <div class="modal modal-lg">
+        <div class="modal-header">
+            <h3>Queue Request Details</h3>
+            <button class="modal-close" onclick="closeModal('queueDetailModal')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <div class="modal-body" id="queueDetailBody">
+            <div id="queueDetailContent"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeModal('queueDetailModal')">Close</button>
+            <button class="btn btn-coral" id="queueDetailRemove">Remove from Queue</button>
+            <button class="btn btn-yellow" id="queueDetailUnprioritize" style="display:none;">Unprioritize Request</button>
+            <button class="btn btn-primary" id="queueDetailPrioritize">Prioritize Request</button>
+            <button class="btn btn-success" id="queueDetailFulfill">Fulfill Request</button>
+        </div>
+    </div>
+</div>
+
+<!-- Save Recipient Modal -->
+<div class="modal-overlay" id="saveRecipientModal">
+    <div class="modal modal-sm">
+        <div class="modal-header">
+            <h3>Save Recipient Profile</h3>
+            <button class="modal-close" onclick="closeModal('saveRecipientModal')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <div class="modal-body">
+            <div class="privacy-notice">
+                <strong>Data Privacy Notice (R.A. 10173)</strong><br>
+                By saving this recipient's information, you acknowledge that personal data collected is for legitimate health service purposes and will be protected under the Data Privacy Act of 2012. The data will only be used within the MediSync system for dispensing and record-keeping purposes.
+            </div>
+            <div class="form-group">
+                <label for="saveRecipientNameDisplay">Recipient Name</label>
+                <input type="text" id="saveRecipientNameDisplay" class="form-control" disabled>
+            </div>
+            <div class="form-group">
+                <label for="saveRecipientContactDisplay">Contact</label>
+                <input type="text" id="saveRecipientContactDisplay" class="form-control" disabled>
+            </div>
+            <div class="form-group">
+                <label for="saveRecipientCenterDisplay">Affiliated Center</label>
+                <input type="text" id="saveRecipientCenterDisplay" class="form-control" disabled>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeModal('saveRecipientModal')">Cancel</button>
+            <button class="btn btn-primary" id="saveRecipientConfirm">Save Profile</button>
+        </div>
+    </div>
+</div>
+
+<!-- Batch Selection Modal -->
+<div class="modal-overlay" id="batchSelectionModal">
+    <div class="modal modal-md">
+        <div class="modal-header">
+            <h3>Select Quantities per Batch</h3>
+            <button class="modal-close" onclick="closeModal('batchSelectionModal')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <div class="modal-body">
+            <p style="margin-bottom: 12px;">Select how much to dispense from each recorded batch for <strong id="batchModalMedName" style="color:var(--primary-dark);"></strong>.</p>
+            <div class="table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Stock #</th>
+                            <th>Exp. Date</th>
+                            <th>Available</th>
+                            <th>Allocate</th>
+                        </tr>
+                    </thead>
+                    <tbody id="batchModalBody">
+                    </tbody>
+                </table>
+            </div>
+            <div style="margin-top: 16px; text-align: right; font-size: 1.1rem;">
+                Total Allocated: <strong id="batchTotalAllocated" style="color:var(--primary-dark);">0</strong>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeModal('batchSelectionModal')">Cancel</button>
+            <button class="btn btn-primary" id="btnConfirmBatches">Confirm Selection</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/dispensing.js') }}"></script>
+{% endblock %}

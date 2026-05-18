@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page-title-row">
+    <div>
+        <h1 class="page-title">Dashboard</h1>
+        <p class="page-subtitle">Medicine inventory overview and recent activity</p>
+    </div>
+</div>
+
+<!-- Carousel Display Blocks -->
+<div class="carousel-wrapper">
+    <div class="carousel-track" id="carouselTrack">
+        <div class="carousel-slide">
+            <div class="stat-block total" data-block="total">
+                <div class="stat-info">
+                    <div class="stat-label">Total Items</div>
+                    <div class="stat-value" id="statTotal">0</div>
+                </div>
+                <div class="stat-icon"><svg viewBox="0 0 24 24"><path d="M20 7h-4V4c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2v3H4c-1.1 0-2 .9-2 2v11c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zM10 4h4v3h-4V4z"/></svg></div>
+            </div>
+        </div>
+        <div class="carousel-slide">
+            <div class="stat-block expiring" data-block="about_to_expire">
+                <div class="stat-info">
+                    <div class="stat-label">About to Expire</div>
+                    <div class="stat-value" id="statExpiring">0</div>
+                </div>
+                <div class="stat-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+            </div>
+        </div>
+        <div class="carousel-slide">
+            <div class="stat-block expired" data-block="expired">
+                <div class="stat-info">
+                    <div class="stat-label">Expired</div>
+                    <div class="stat-value" id="statExpired">0</div>
+                </div>
+                <div class="stat-icon"><svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+            </div>
+        </div>
+        <div class="carousel-slide">
+            <div class="stat-block dispensed" data-block="dispensed">
+                <div class="stat-info">
+                    <div class="stat-label">Dispensed</div>
+                    <div class="stat-value" id="statDispensed">0</div>
+                </div>
+                <div class="stat-icon"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+            </div>
+        </div>
+        <div class="carousel-slide">
+            <div class="stat-block discarded" data-block="discarded">
+                <div class="stat-info">
+                    <div class="stat-label">Discarded</div>
+                    <div class="stat-value" id="statDiscarded">0</div>
+                </div>
+                <div class="stat-icon"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></div>
+            </div>
+        </div>
+    </div>
+    <button class="carousel-arrow prev" id="carouselPrev"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
+    <button class="carousel-arrow next" id="carouselNext"><svg viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg></button>
+</div>
+<div class="carousel-dots" id="carouselDots">
+    <button class="carousel-dot active" data-index="0"></button>
+    <button class="carousel-dot" data-index="1"></button>
+    <button class="carousel-dot" data-index="2"></button>
+    <button class="carousel-dot" data-index="3"></button>
+    <button class="carousel-dot" data-index="4"></button>
+</div>
+
+<!-- Recently Added Table -->
+<div class="card" style="margin-top:28px;">
+    <div class="card-header">
+        <h3>Recently Added</h3>
+    </div>
+    <div class="card-body" style="padding:0;">
+        <div class="table-wrapper">
+            <table class="data-table" id="recentTable">
+                <thead>
+                    <tr>
+                        <th>Stock #</th>
+                        <th>Brand Name</th>
+                        <th>Dosage</th>
+                        <th>Unit</th>
+                        <th>Quantity</th>
+                        <th>Generic Name</th>
+                        <th>Date Added</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="recentBody">
+                    <tr class="empty-row"><td colspan="9">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Status Pie Chart -->
+<div class="card" style="margin-top:28px;">
+    <div class="card-header"><h3>All Medicine Status Report</h3></div>
+    <div class="card-body">
+        <div class="chart-container">
+            <div class="chart-canvas-wrap">
+                <canvas id="statusChart" width="280" height="280"></canvas>
+            </div>
+            <div class="chart-legend" id="chartLegend"></div>
+        </div>
+    </div>
+</div>
+
+<div class="grid-2" style="margin-top:28px;">
+    <!-- Expired Medicines -->
+    <div class="card">
+        <div class="card-header">
+            <h3>Expired Medicines</h3>
+            <span class="badge badge-expired" id="expiredCount">0</span>
+        </div>
+        <div class="card-body" style="padding:0;">
+            <div class="table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Article/Name</th>
+                            <th>Generic Name</th>
+                            <th>Unit</th>
+                            <th>Qty</th>
+                            <th>Exp. Date</th>
+                            <th>Days</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="expiredBody">
+                        <tr class="empty-row"><td colspan="7">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div id="expiredPagination" style="padding: 0 16px 16px;"></div>
+        </div>
+    </div>
+
+    <!-- About to Expire Medicines -->
+    <div class="card">
+        <div class="card-header">
+            <h3>About to Expire</h3>
+            <span class="badge badge-pending" id="expiringCount">0</span>
+        </div>
+        <div class="card-body" style="padding:0;">
+            <div class="table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Article/Name</th>
+                            <th>Generic Name</th>
+                            <th>Unit</th>
+                            <th>Qty</th>
+                            <th>Exp. Date</th>
+                            <th>Days Left</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="expiringBody">
+                        <tr class="empty-row"><td colspan="7">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div id="expiringPagination" style="padding: 0 16px 16px;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Block Detail Popup -->
+<div class="modal-overlay" id="blockModal">
+    <div class="modal modal-lg">
+        <div class="modal-header">
+            <h3 id="blockModalTitle">Items</h3>
+            <button class="modal-close" onclick="closeModal('blockModal')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <div class="modal-body" style="padding:0;">
+            <div class="table-wrapper">
+                <table class="data-table">
+                    <thead id="blockTableHead"></thead>
+                    <tbody id="blockTableBody"></tbody>
+                </table>
+            </div>
+            <div id="blockPagination" style="padding: 0 16px 16px;"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

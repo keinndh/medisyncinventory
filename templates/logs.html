@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Activity Logs{% endblock %}
+{% block content %}
+<div class="page-title-row">
+    <div>
+        <h1 class="page-title">Activity Logs</h1>
+        <p class="page-subtitle">Complete audit trail of all system actions</p>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn btn-yellow" id="archiveBtn">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+            Archive Logs
+        </button>
+        <div class="export-btn-wrap">
+            <button class="btn btn-outline btn-sm" id="exportBtn">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Export
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="export-dropdown" id="exportDropdown">
+                <button id="exportCsvBtn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+                    Export CSV
+                </button>
+                <button id="exportPdfBtn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    Export PDF
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="toolbar" style="margin-bottom: 16px; align-items: center; gap: 12px;">
+    <!-- Universal search -->
+    <div class="search-box" style="flex:1;min-width:200px;">
+        <input type="text" id="logUniversalSearch" placeholder="Search logs...">
+        <div class="search-icon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+    </div>
+    <!-- Filter type dropdown + input -->
+    <div style="width: 200px;">
+        <select id="logFilterType" class="form-control">
+            <option value="">-- Filter By --</option>
+            <option value="recipient">By Recipient Name</option>
+            <option value="center">By Center Name</option>
+            <option value="medicine">By Medicine</option>
+            <option value="date_range">By Date Range</option>
+        </select>
+    </div>
+    <div id="logSearchWrapper" class="search-box" style="flex: 1; display: none;">
+        <input type="text" id="logSearchInput" placeholder="Filter...">
+        <div class="search-icon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+    </div>
+    <!-- Medicine autocomplete dropdown inside filter -->
+    <div id="logMedicineWrapper" style="display:none;flex:1;" class="autocomplete-wrapper">
+        <input type="text" id="logMedicineInput" class="form-control" placeholder="Type medicine name..." autocomplete="off">
+        <div class="autocomplete-dropdown" id="logMedicineDropdown"></div>
+    </div>
+    <div id="logDateWrapper" style="display: none; flex: 1; align-items: center; gap: 8px;">
+        <input type="date" id="logDateFrom" class="form-control" style="width: 150px;">
+        <span>to</span>
+        <input type="date" id="logDateTo" class="form-control" style="width: 150px;">
+    </div>
+</div>
+
+<!-- Filter Tabs -->
+<div class="filter-tabs" id="logFilterTabs">
+    <button class="filter-tab active" data-action="">All</button>
+    <button class="filter-tab" data-action="Login">Login</button>
+    <button class="filter-tab" data-action="Add">Add</button>
+    <button class="filter-tab" data-action="Edit">Edit</button>
+    <button class="filter-tab" data-action="Delete">Delete</button>
+    <button class="filter-tab" data-action="Discard">Discard</button>
+    <button class="filter-tab" data-action="Dispense">Dispense</button>
+    <button class="filter-tab" data-action="Restock">Restock</button>
+    <button class="filter-tab" data-action="Logout">Logout</button>
+</div>
+
+<!-- Logs Table -->
+<div class="card">
+    <div class="card-body" style="padding:0;">
+        <div class="table-wrapper">
+            <table class="data-table" id="logsTable">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Timestamp</th>
+                        <th>Action</th>
+                        <th>Performed By</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody id="logsBody">
+                    <tr class="empty-row"><td colspan="5">Loading logs...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div id="logsPagination" style="padding: 0 16px 16px;"></div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/logs.js') }}"></script>
+{% endblock %}
