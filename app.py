@@ -694,90 +694,127 @@ def api_export_csv():
     )
 
 
-@app.route('/api/inventory/export/pdf')
+@app.route('/api/export/inventory/pdf')
 @login_required
 def api_export_pdf():
-    from reportlab.lib.pagesizes import landscape, A4
+    from reportlab.lib.pagesizes import A4
     from reportlab.lib import colors
-    from reportlab.lib.units import inch
+    from reportlab.lib.units import cm
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.enums import TA_CENTER
-    import os
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT
 
     medicines = Medicine.query.filter(Medicine.status != 'Deleted').order_by(Medicine.date_added.desc()).all()
 
     buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=landscape(A4), rightMargin=0.5*inch, leftMargin=0.5*inch, topMargin=0.5*inch, bottomMargin=0.5*inch)
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=1.2*cm,
+        leftMargin=1.2*cm,
+        topMargin=1.8*cm,
+        bottomMargin=2*cm
+    )
     styles = getSampleStyleSheet()
-    
-    title_style = ParagraphStyle('StockTitle', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=14, alignment=TA_CENTER, spaceAfter=6)
-    subtitle_style = ParagraphStyle('StockSubtitle', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=12, alignment=TA_CENTER, spaceAfter=24)
-    
+
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontName='Helvetica-Bold',
+        fontSize=16,
+        alignment=TA_CENTER,
+        spaceAfter=6
+    )
+    subtitle_style = ParagraphStyle(
+        'CustomSubtitle',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=12,
+        alignment=TA_CENTER,
+        spaceAfter=20
+    )
+
     elements = []
 
-    img_path = os.path.join(app.static_folder, 'images', 'print_header.png')
-    if os.path.exists(img_path):
-        elements.append(Image(img_path, width=10*inch, height=0.975*inch))
-        elements.append(Spacer(1, 0.1*inch))
+    # === HEADER (Logos + Title) ===
+    header_path = os.path.join(app.static_folder, 'paper', 'inventory_header.png')
+    if os.path.exists(header_path):
+        elements.append(Image(header_path, width=17*cm, height=3.2*cm))
+    else:
+        elements.append(Paragraph('<b>VITALI HEALTH DISTRICT</b><br/>MIALIM VITALI, ZAMBOANGA CITY', title_style))
 
     elements.append(Paragraph('MEDICAL SUPPLIES STOCK ASSESSMENT REPORT', title_style))
     elements.append(Paragraph(f'AS OF: {manila_today().strftime("%B %d, %Y")}', subtitle_style))
+    elements.append(Spacer(1, 0.4*cm))
 
+    # === TABLE ===
     headers = ['Stock Number', 'Article', 'Dosage', 'Unit', 'Qty.', 'Category', 'Expiration Date', 'Days Left', 'Status']
+
     data = [headers]
     for m in medicines:
+        days = getattr(m, 'days_remaining', None)
         data.append([
-            m.stock_number, m.article_name, m.description_dosage or '', m.unit_of_measurement,
-            str(m.quantity), m.category or '',
+            m.stock_number or '-',
+            m.article_name or '',
+            m.description_dosage or '',
+            m.unit_of_measurement or '',
+            str(m.quantity),
+            m.category or m.category_type or '',
             m.expiration_date.strftime('%Y-%m-%d') if m.expiration_date else '',
-            str(m.to_dict().get('days_remaining')) if m.to_dict().get('days_remaining') is not None else '-',
-            m.status
+            str(days) if days is not None else '-',
+            m.status or ''
         ])
 
-    # Calculate column widths to fit landscape A4
-    col_widths = [1*inch, 1.8*inch, 1.2*inch, 0.8*inch, 0.6*inch, 1.2*inch, 1*inch, 0.7*inch, 0.9*inch]
+    col_widths = [2.3*cm, 3.8*cm, 2.1*cm, 1.6*cm, 1.3*cm, 2.3*cm, 2.3*cm, 1.6*cm, 1.9*cm]
 
     table = Table(data, repeatRows=1, colWidths=col_widths)
     table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#0284c7')),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#0e7490')),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 9),
-        ('FONTSIZE', (0, 1), (-1, -1), 8),
+        ('FONTSIZE', (0, 0), (-1, 0), 9.5),
+        ('FONTSIZE', (0, 1), (-1, -1), 8.5),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+        ('ALIGN', (5, 0), (5, -1), 'LEFT'),
+        ('GRID', (0, 0), (-1, -1), 0.6, colors.black),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f1f5f9')]),
+        ('BOX', (0, 0), (-1, -1), 1.2, colors.black),
     ]))
-    elements.append(table)
-    elements.append(Spacer(1, 0.6 * inch))
 
-    # Add signature section
+    elements.append(table)
+    elements.append(Spacer(1, 1.8*cm))
+
+    # === SIGNATURES ===
     sig_data = [
         ['Approved By:', '', 'Certified Correct By:'],
-        ['\n\n\n', '', '\n\n\n'],
-        ['Signature Over Printed Name of Head of Agency/Entity\nof Authorized Representative', '', 'Signature Over Printed Name of Inventor Committee\nChair and Members']
+        ['\n\n\n\n\n', '', '\n\n\n\n\n'],
+        ['Signature Over Printed Name of Head of', '', 'Signature Over Printed Name of Inventor Committee'],
+        ['Agency/Entity of Authorized Representative', '', 'Chair and Members']
     ]
-    
-    sig_table = Table(sig_data, colWidths=[3.5*inch, 2*inch, 3.5*inch])
+
+    sig_table = Table(sig_data, colWidths=[7.5*cm, 1*cm, 7.5*cm])
     sig_table.setStyle(TableStyle([
         ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('ALIGN', (0, 0), (0, -1), 'LEFT'),
-        ('ALIGN', (2, 0), (2, -1), 'LEFT'),
-        ('VALIGN', (0, 0), (-1, -1), 'BOTTOM'),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (1, 0), (1, 1), 'BOTTOM'),
         ('LINEBELOW', (0, 1), (0, 1), 1, colors.black),
         ('LINEBELOW', (2, 1), (2, 1), 1, colors.black),
     ]))
-    
+
     elements.append(sig_table)
 
     doc.build(elements)
     buffer.seek(0)
+
     return send_file(
-        buffer, mimetype='application/pdf', as_attachment=True,
-        download_name=f'medisync_inventory_{manila_today().isoformat()}.pdf'
+        buffer,
+        mimetype='application/pdf',
+        as_attachment=True,
+        download_name=f'Vitali_Inventory_Report_{manila_today().strftime("%Y-%m-%d")}.pdf'
     )
 
 # dipensing api
@@ -1371,54 +1408,64 @@ def api_logs_export_csv():
     )
 
 
-@app.route('/api/logs/export/pdf')
+@app.route('/api/export/logs/pdf')
 @login_required
-def api_logs_export_pdf():
-    from reportlab.lib.pagesizes import landscape, A4
+def api_export_logs_pdf():
+    from reportlab.lib.pagesizes import A4
     from reportlab.lib import colors
-    from reportlab.lib.units import inch
+    from reportlab.lib.units import cm
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER
 
-    logs = ActivityLog.query.order_by(ActivityLog.timestamp.desc()).limit(1000).all()
+    logs = ActivityLog.query.order_by(ActivityLog.timestamp.desc()).all()
+
     buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=landscape(A4))
+    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=1.5*cm, leftMargin=1.5*cm, topMargin=2*cm, bottomMargin=2*cm)
     styles = getSampleStyleSheet()
+
+    title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=16, alignment=TA_CENTER, spaceAfter=20)
+
     elements = []
+    elements.append(Paragraph('ACTIVITY LOGS REPORT', title_style))
+    elements.append(Paragraph(f'Vitali Health District • Generated on {manila_today().strftime("%B %d, %Y")}', 
+                            ParagraphStyle('Subtitle', parent=styles['Normal'], alignment=TA_CENTER, fontSize=11)))
 
-    elements.append(Paragraph('MediSync - Activity Logs Report', styles['Title']))
-    elements.append(Paragraph(f'Generated: {manila_now().strftime("%Y-%m-%d %H:%M")}', styles['Normal']))
-    elements.append(Spacer(1, 0.3 * inch))
+    elements.append(Spacer(1, 0.5*cm))
 
-    headers = ['ID', 'Timestamp', 'Action', 'Performed By', 'Details']
-    data = [headers]
-    for l in logs:
+    data = [['#', 'Timestamp', 'Action', 'Performed By', 'Details']]
+    for i, log in enumerate(logs, 1):
         data.append([
-            str(l.id),
-            l.timestamp.strftime('%Y-%m-%d %H:%M') if l.timestamp else '',
-            l.action,
-            l.performed_by,
-            l.details
+            str(i),
+            log.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+            log.action,
+            log.performed_by,
+            log.details[:120] + '...' if len(log.details) > 120 else log.details
         ])
 
-    table = Table(data, colWidths=[0.5*inch, 1.5*inch, 1*inch, 1.5*inch, 5.5*inch], repeatRows=1)
+    table = Table(data, repeatRows=1, colWidths=[0.8*cm, 3.2*cm, 2.2*cm, 3.5*cm, 7*cm])
     table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#5CB9A4')),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#0e7490')),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 9),
-        ('FONTSIZE', (0, 1), (-1, -1), 8),
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),
+        ('FONTSIZE', (0, 1), (-1, -1), 9),
         ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.whitesmoke, colors.white]),
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('ALIGN', (0, 0), (0, -1), 'CENTER'),
+        ('ALIGN', (1, 0), (1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8fafc')]),
     ]))
+
     elements.append(table)
     doc.build(elements)
+
     buffer.seek(0)
     return send_file(
-        buffer, mimetype='application/pdf', as_attachment=True,
-        download_name=f'medisync_logs_{manila_today().isoformat()}.pdf'
+        buffer,
+        mimetype='application/pdf',
+        as_attachment=True,
+        download_name=f'Vitali_Activity_Logs_{manila_today().strftime("%Y-%m-%d")}.pdf'
     )
 
 

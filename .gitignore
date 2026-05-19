@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.py[cod]
+venv/
+.env
+.env.local
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+instance/
+
+# Vercel
+.vercel/
+
+# Node.js
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Uploads (user data — don't commit)
+static/uploads/
