@@ -694,115 +694,97 @@ def api_export_csv():
     )
 
 
-@app.route('/api/export/inventory/pdf')
+@app.route('/api/inventory/export/pdf')
 @login_required
-def api_export_pdf():
+def api_export_inventory_pdf():
+    """Improved Inventory PDF Export - Matches the official template"""
     from reportlab.lib.pagesizes import A4
     from reportlab.lib import colors
     from reportlab.lib.units import cm
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+    from reportlab.lib.enums import TA_CENTER
 
     medicines = Medicine.query.filter(Medicine.status != 'Deleted').order_by(Medicine.date_added.desc()).all()
 
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
-        buffer,
+        buffer, 
         pagesize=A4,
-        rightMargin=1.2*cm,
-        leftMargin=1.2*cm,
-        topMargin=1.8*cm,
+        rightMargin=1*cm, 
+        leftMargin=1*cm, 
+        topMargin=1.5*cm, 
         bottomMargin=2*cm
     )
+    
     styles = getSampleStyleSheet()
-
-    title_style = ParagraphStyle(
-        'CustomTitle',
-        parent=styles['Heading1'],
-        fontName='Helvetica-Bold',
-        fontSize=16,
-        alignment=TA_CENTER,
-        spaceAfter=6
-    )
-    subtitle_style = ParagraphStyle(
-        'CustomSubtitle',
-        parent=styles['Normal'],
-        fontName='Helvetica-Bold',
-        fontSize=12,
-        alignment=TA_CENTER,
-        spaceAfter=20
-    )
+    title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontName='Helvetica-Bold', 
+                                fontSize=16, alignment=TA_CENTER, spaceAfter=10)
+    subtitle_style = ParagraphStyle('Subtitle', parent=styles['Normal'], fontName='Helvetica-Bold', 
+                                   fontSize=12, alignment=TA_CENTER, spaceAfter=25)
 
     elements = []
 
-    # === HEADER (Logos + Title) ===
-    header_path = os.path.join(app.static_folder, 'paper', 'inventory_header.png')
-    if os.path.exists(header_path):
-        elements.append(Image(header_path, width=17*cm, height=3.2*cm))
-    else:
-        elements.append(Paragraph('<b>VITALI HEALTH DISTRICT</b><br/>MIALIM VITALI, ZAMBOANGA CITY', title_style))
+    # Header
+    header_path = os.path.join(app.static_folder, 'paper', 'inventory_stock_template.pdf')  # or use image
+    # For now use text header (you can improve with image later)
+    elements.append(Paragraph("VITALI HEALTH DISTRICT", title_style))
+    elements.append(Paragraph("MIALIM VITALI, ZAMBOANGA CITY", subtitle_style))
+    elements.append(Paragraph("MEDICAL SUPPLIES STOCK ASSESSMENT REPORT", title_style))
+    elements.append(Paragraph(f"AS OF: {manila_today().strftime('%B %d, %Y')}", subtitle_style))
+    elements.append(Spacer(1, 15))
 
-    elements.append(Paragraph('MEDICAL SUPPLIES STOCK ASSESSMENT REPORT', title_style))
-    elements.append(Paragraph(f'AS OF: {manila_today().strftime("%B %d, %Y")}', subtitle_style))
-    elements.append(Spacer(1, 0.4*cm))
-
-    # === TABLE ===
+    # Table Data
     headers = ['Stock Number', 'Article', 'Dosage', 'Unit', 'Qty.', 'Category', 'Expiration Date', 'Days Left', 'Status']
-
     data = [headers]
+
     for m in medicines:
-        days = getattr(m, 'days_remaining', None)
+        days_left = m.to_dict().get('days_remaining', '-')
         data.append([
-            m.stock_number or '-',
-            m.article_name or '',
+            m.stock_number,
+            m.article_name,
             m.description_dosage or '',
-            m.unit_of_measurement or '',
+            m.unit_of_measurement,
             str(m.quantity),
             m.category or m.category_type or '',
             m.expiration_date.strftime('%Y-%m-%d') if m.expiration_date else '',
-            str(days) if days is not None else '-',
-            m.status or ''
+            str(days_left),
+            m.status
         ])
 
-    col_widths = [2.3*cm, 3.8*cm, 2.1*cm, 1.6*cm, 1.3*cm, 2.3*cm, 2.3*cm, 1.6*cm, 1.9*cm]
+    col_widths = [2.4*cm, 3.6*cm, 2.0*cm, 1.7*cm, 1.3*cm, 2.2*cm, 2.3*cm, 1.6*cm, 1.9*cm]
 
     table = Table(data, repeatRows=1, colWidths=col_widths)
     table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#0e7490')),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 9.5),
-        ('FONTSIZE', (0, 1), (-1, -1), 8.5),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('ALIGN', (1, 0), (1, -1), 'LEFT'),
-        ('ALIGN', (5, 0), (5, -1), 'LEFT'),
-        ('GRID', (0, 0), (-1, -1), 0.6, colors.black),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f1f5f9')]),
-        ('BOX', (0, 0), (-1, -1), 1.2, colors.black),
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#0284c8')),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,0), 10),
+        ('FONTSIZE', (0,1), (-1,-1), 9),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('ALIGN', (1,0), (1,-1), 'LEFT'),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.black),
+        ('BOX', (0,0), (-1,-1), 1, colors.black),
+        ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.HexColor('#f0f9ff')]),
     ]))
 
     elements.append(table)
-    elements.append(Spacer(1, 1.8*cm))
+    elements.append(Spacer(1, 1.5*cm))
 
-    # === SIGNATURES ===
+    # Signatures
     sig_data = [
         ['Approved By:', '', 'Certified Correct By:'],
-        ['\n\n\n\n\n', '', '\n\n\n\n\n'],
-        ['Signature Over Printed Name of Head of', '', 'Signature Over Printed Name of Inventor Committee'],
-        ['Agency/Entity of Authorized Representative', '', 'Chair and Members']
+        ['\n\n\n\n', '', '\n\n\n\n'],
+        ['Signature Over Printed Name of Head of Agency/Entity of Authorized Representative', '', 
+         'Signature Over Printed Name of Inventor Committee Chair and Members']
     ]
 
-    sig_table = Table(sig_data, colWidths=[7.5*cm, 1*cm, 7.5*cm])
+    sig_table = Table(sig_data, colWidths=[8*cm, 1*cm, 8*cm])
     sig_table.setStyle(TableStyle([
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('VALIGN', (1, 0), (1, 1), 'BOTTOM'),
-        ('LINEBELOW', (0, 1), (0, 1), 1, colors.black),
-        ('LINEBELOW', (2, 1), (2, 1), 1, colors.black),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('FONTSIZE', (0,0), (-1,-1), 10),
+        ('LINEBELOW', (0,1), (0,1), 1, colors.black),
+        ('LINEBELOW', (2,1), (2,1), 1, colors.black),
     ]))
 
     elements.append(sig_table)
@@ -811,11 +793,12 @@ def api_export_pdf():
     buffer.seek(0)
 
     return send_file(
-        buffer,
+        buffer, 
         mimetype='application/pdf',
         as_attachment=True,
-        download_name=f'Vitali_Inventory_Report_{manila_today().strftime("%Y-%m-%d")}.pdf'
+        download_name=f'Vitali_Stock_Report_{manila_today().strftime("%Y-%m-%d")}.pdf'
     )
+
 
 # dipensing api
 @app.route('/api/dispense', methods=['POST'])
